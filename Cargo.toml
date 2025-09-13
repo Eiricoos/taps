@@ -1,6 +1,7 @@
 [package]
-name = "taps_implementation"
+name = "taps"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+getifaddrs = "0.4"
