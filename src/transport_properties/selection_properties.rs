@@ -17,7 +17,7 @@ struct TransportProperties {
     full_checksum_recv: Preference,
     congestion_control: Preference,
     keep_alive: Preference,
-    interface: Vec<(Preference, i32)>, // Temporary, need to figure out what type to use
+    interface: Vec<(Preference, i32)>, // Temporary, need to figure out how to do this
 }
 
 impl SelectionProperties {
@@ -36,7 +36,7 @@ impl SelectionProperties {
             full_checksum_recv: Require,
             congestion_control: Require,
             keep_alive: NoPreference,
-            interface: Vec::new(),
+            interface: Vec::new(), // Will not work since the struct can't change size later
         }
     }
 
