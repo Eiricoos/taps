@@ -1,3 +1,5 @@
+// This is chaos for now, don't look D:
+
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 /* Preconnection object */

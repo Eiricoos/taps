@@ -1,0 +1,3 @@
+struct MessageProperties {
+    placeholder: String,
+}

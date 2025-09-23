@@ -1,0 +1,3 @@
+struct ConnectionProperties {
+    placeholder: String,
+}
