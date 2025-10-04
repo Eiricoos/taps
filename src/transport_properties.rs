@@ -2,9 +2,7 @@ pub mod connection_properties;
 pub mod message_properties;
 pub mod selection_properties;
 
-use selection_properties::*;
-
-use crate::{connection_properties::ConnectionProperties, message_properties::MessageProperties};
+use {connection_properties::*, message_properties::*, selection_properties::*};
 
 pub struct TransportProperties {
     pub(crate) selection_properties: SelectionProperties,
@@ -32,7 +30,7 @@ impl TransportProperties {
         // Maybe this as well
     }
 
-    // Call on the selection_properties functions with the same name
+    // Call on the corresponding selection_properties function
     pub fn set(&mut self, property: &str, value: SelectionPropertyValue) {
         if !self.connection_created {
             self.selection_properties.set(property, value);
@@ -41,7 +39,6 @@ impl TransportProperties {
         }
     }
 
-    // Call on the selection_properties functions with the same name
     pub fn require(&mut self, property: &str) {
         self.set(
             property,
@@ -49,7 +46,6 @@ impl TransportProperties {
         );
     }
 
-    // Call on the selection_properties functions with the same name
     pub fn prefer(&mut self, property: &str) {
         self.set(
             property,
@@ -57,7 +53,6 @@ impl TransportProperties {
         );
     }
 
-    // Call on the selection_properties functions with the same name
     pub fn no_preference(&mut self, property: &str) {
         self.set(
             property,
@@ -65,7 +60,6 @@ impl TransportProperties {
         );
     }
 
-    // Call on the selection_properties functions with the same name
     pub fn avoid(&mut self, property: &str) {
         self.set(
             property,
@@ -73,7 +67,6 @@ impl TransportProperties {
         );
     }
 
-    // Call on the selection_properties functions with the same name
     pub fn prohibit(&mut self, property: &str) {
         self.set(
             property,
