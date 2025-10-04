@@ -332,6 +332,7 @@ mod tests {
         assert_eq!(false, selection_properties.multipath_set);
     }
 
+    #[test]
     fn set() {
         let mut selection_properties = SelectionProperties::new();
         // Testing setting a Preference type
