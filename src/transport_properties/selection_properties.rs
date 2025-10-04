@@ -1,6 +1,15 @@
-use super::*;
 use std::collections::HashSet;
 
+#[derive(PartialEq, Eq, Debug, Hash)]
+pub enum Preference {
+    Require,
+    Prefer,
+    NoPreference,
+    Avoid,
+    Prohibit,
+}
+
+// Preference for multipath
 #[derive(PartialEq, Eq, Debug)]
 pub enum MultipathPreference {
     Disabled,
@@ -30,7 +39,7 @@ pub enum SelectionPropertyValue {
 
 // The selection properties as described in RFC9622
 #[derive(Debug)]
-struct SelectionProperties {
+pub(crate) struct SelectionProperties {
     reliability: Preference,
     preserve_message_boundaries: Preference,
     per_msg_reliability: Preference,
@@ -49,13 +58,15 @@ struct SelectionProperties {
     direction: Direction,
     soft_error_notify: Preference,
     active_read_before_send: Preference,
+    pub(crate) use_temporary_local_address_set: bool,
+    pub(crate) multipath_set: bool,
 }
 
 // Methods to be used on the selection properties struct
 impl SelectionProperties {
     //Constructor for the SelectionProperties struct. Default values are as described
     // in RFC9622
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             reliability: Preference::Require,
             preserve_message_boundaries: Preference::NoPreference,
@@ -69,184 +80,198 @@ impl SelectionProperties {
             keep_alive: Preference::NoPreference,
             interface: HashSet::new(),
             pvd: HashSet::new(),
-            use_temporary_local_address: Preference::Prefer, // Avoid for listeners and rendezvous, set when calling listen and rendezvous if not set by user.
-            multipath: MultipathPreference::Disabled, // Passive for listeners, set when calling listen if not set by the user.
+
+            // The following two members have different default values depending on
+            // what kind of connection is created, which can only be known when calling
+            // initiate, listen etc...
+            // The members are set when calling the respective method with a different default,
+            // given that a user hasn't specified a value
+            use_temporary_local_address: Preference::Prefer, // Avoid for listeners and rendezvous
+            multipath: MultipathPreference::Disabled,        // Passive for listeners
+
             advertises_altaddr: false,
             direction: Direction::Bidirectional,
             soft_error_notify: Preference::NoPreference,
             active_read_before_send: Preference::NoPreference,
+
+            // These are not officially part of the struct, they are here to help
+            // set correct default values if the corresponding members haven't been
+            // set by the user when calling listen or rendevouz on the preconnection
+            use_temporary_local_address_set: false,
+            multipath_set: false,
         }
     }
 
-    pub fn new_udp() {
-        // This might be nice to have
-    }
-
-    pub fn new_quic() {
-        // Maybe this as well
-    }
-
-    pub fn set(&mut self, property: &str, value: SelectionPropertyValue) {
-        match property.replace("_", "").to_lowercase().as_str() {
+    // Set the given member to the given value. Members are given as a string
+    pub(crate) fn set(&mut self, property: &str, value: SelectionPropertyValue) {
+        match property.replace(['_', '-'], "").to_lowercase().as_str() {
             "reliability" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.reliability = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"reliability\" requires a value of type Preference")
                 }
             }
             "preservemessageboundaries" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.preserve_message_boundaries = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"preserveMessageBoundaries\" requires a value of type Preference")
                 }
             }
             "permsgreliability" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.per_msg_reliability = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"perMsgReliability\" requires a value of type Preference")
                 }
             }
             "preserveorder" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.preserve_order = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"preserveOrder\" requires a value of type Preference")
                 }
             }
             "zerorttmsg" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.zero_rtt_msg = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"zeroRttMsg\" requires a value of type Preference")
                 }
             }
             "multistreaming" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.multistreaming = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"multistreaming\" requires a value of type Preference")
                 }
             }
             "fullchecksumsend" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.full_checksum_send = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"fullChecksumSend\" requires a value of type Preference")
                 }
             }
             "fullchecksumrecv" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.full_checksum_recv = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"fullChecksumRecv\" requires a value of type Preference")
                 }
             }
             "congestioncontrol" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.congestion_control = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"congestionControl\" requires a value of type Preference")
                 }
             }
             "keepalive" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.keep_alive = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"keepAlive\" requires a value of type Preference")
                 }
             }
             "interface" => {
                 if let SelectionPropertyValue::InterfaceSet(preference_set) = value {
                     self.interface = preference_set;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"interface\" requires a value of type InterfaceSet")
                 }
             }
             "pvd" => {
                 if let SelectionPropertyValue::PvdSet(preference_set) = value {
                     self.pvd = preference_set;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"pvd\" requires a value of type PvdSet")
                 }
             }
             "usetemporarylocaladdress" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.use_temporary_local_address = preference;
+                    self.use_temporary_local_address_set = true;
                 } else {
-                    // Should throw an error
+                    panic!(
+                        "Property \"useTemporaryLocalAddress\" requires a value of type Preference"
+                    )
                 }
             }
             "multipath" => {
                 if let SelectionPropertyValue::MultipathPreference(multipath_preference) = value {
                     self.multipath = multipath_preference;
+                    self.multipath_set = true;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"multipath\" requires a value of type MultipathPreference")
                 }
             }
             "advertisesaltaddr" => {
                 if let SelectionPropertyValue::Bool(preference) = value {
                     self.advertises_altaddr = preference;
                 } else {
-                    // Should throw an error
+                    panic!(
+                        "Property \"advertisesAltaddr\" requires a value of type SelectionPropertyValue::Bool"
+                    )
                 }
             }
             "direction" => {
                 if let SelectionPropertyValue::Direction(direction) = value {
                     self.direction = direction;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"direction\" requires a value of type Direction")
                 }
             }
             "softerrornotify" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.soft_error_notify = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"softErrorNotify\" requires a value of type Preference")
                 }
             }
             "activereadbeforesend" => {
                 if let SelectionPropertyValue::Preference(preference) = value {
                     self.active_read_before_send = preference;
                 } else {
-                    // Should throw an error
+                    panic!("Property \"activeReadBeforeSend\" requires a value of type Preference")
                 }
             }
-            _ => panic!("Property {} not recognized", property),
+            _ => panic!("Property \"{}\" not recognized", property),
         };
     }
 
-    pub fn require(&mut self, property: &str) {
+    // The methods require, prefer, no_preference, avoid and prohibit are alternative
+    // ways of setting a preference for a property with a preference type
+    pub(crate) fn require(&mut self, property: &str) {
         self.set(
             property,
             SelectionPropertyValue::Preference(Preference::Require),
         );
     }
 
-    pub fn prefer(&mut self, property: &str) {
+    pub(crate) fn prefer(&mut self, property: &str) {
         self.set(
             property,
             SelectionPropertyValue::Preference(Preference::Prefer),
         );
     }
 
-    pub fn no_preference(&mut self, property: &str) {
+    pub(crate) fn no_preference(&mut self, property: &str) {
         self.set(
             property,
             SelectionPropertyValue::Preference(Preference::NoPreference),
         );
     }
 
-    pub fn avoid(&mut self, property: &str) {
+    pub(crate) fn avoid(&mut self, property: &str) {
         self.set(
             property,
             SelectionPropertyValue::Preference(Preference::Avoid),
         );
     }
 
-    pub fn prohibit(&mut self, property: &str) {
+    pub(crate) fn prohibit(&mut self, property: &str) {
         self.set(
             property,
             SelectionPropertyValue::Preference(Preference::Prohibit),
@@ -254,15 +279,17 @@ impl SelectionProperties {
     }
 }
 
-// Unit tests, to make sure the construction and methods work as intended
+// Unit tests, to make sure the construction works as intended
+// This should be run alone with the flags -- --nocapture --test-threads=1
+// to check that the hash sets are correct
 #[cfg(test)]
 mod tests {
+    use super::Preference::*;
     use super::*;
-    use crate::transport_properties::Preference::*;
 
     #[test]
-    fn initiate_and_set_selection_properties() {
-        let mut selection_properties = SelectionProperties::new();
+    fn new() {
+        let selection_properties = SelectionProperties::new();
         println!("{:#?}", selection_properties);
 
         // Maybe a bit unecessary to test everything, but it is nice to know that
@@ -283,11 +310,11 @@ mod tests {
 
         // Just printing because comparing is a hassle
         println!(
-            "This should be an empty set:\n{:#?}",
+            "This should be an empty set:\n{:?}",
             selection_properties.interface
         );
         println!(
-            "This should be an empty set:\n{:#?}",
+            "This should be an empty set:\n{:?}",
             selection_properties.pvd
         );
 
@@ -301,7 +328,12 @@ mod tests {
         assert_eq!(Direction::Bidirectional, selection_properties.direction);
         assert_eq!(NoPreference, selection_properties.soft_error_notify);
         assert_eq!(NoPreference, selection_properties.active_read_before_send);
+        assert_eq!(false, selection_properties.use_temporary_local_address_set);
+        assert_eq!(false, selection_properties.multipath_set);
+    }
 
+    fn set() {
+        let mut selection_properties = SelectionProperties::new();
         // Testing setting a Preference type
         selection_properties.set("reliability", SelectionPropertyValue::Preference(Avoid));
         assert_eq!(Avoid, selection_properties.reliability);
@@ -315,7 +347,7 @@ mod tests {
             SelectionPropertyValue::InterfaceSet(interface_preference),
         );
         println!(
-            "This should be [(prefer, 5), (prohibit, 2):\n{:#?}",
+            "These should be equal (order doesn't matter):\n{{(Prefer, 5), (Prohibit, 2)}}\n{:?}",
             selection_properties.interface
         );
 
@@ -326,13 +358,13 @@ mod tests {
         );
         assert_eq!(MultipathPreference::Active, selection_properties.multipath);
 
-        // Testing setting a bool
-        selection_properties.set("advertisesaltaddr", SelectionPropertyValue::Bool(true));
+        // Testing setting a bool, with a different style of writing the property
+        selection_properties.set("advertises-altaddr", SelectionPropertyValue::Bool(true));
         assert_eq!(true, selection_properties.advertises_altaddr);
 
-        // Testing setting a direction
+        // Testing setting a direction with a capital letter
         selection_properties.set(
-            "direction",
+            "Direction",
             SelectionPropertyValue::Direction(Direction::UnidirectionalSend),
         );
         assert_eq!(
@@ -340,8 +372,25 @@ mod tests {
             selection_properties.direction
         );
 
-        // Testing using the alternative way of setting a preference
-        selection_properties.require("keepalive");
+        // Testing using the alternative way of setting a preference, with snake_case for the property
+        selection_properties.require("keep_alive");
         assert_eq!(Require, selection_properties.keep_alive);
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_property_name() {
+        let mut selection_properties = SelectionProperties::new();
+        selection_properties.set("chocolate", SelectionPropertyValue::Preference(Prefer));
+    }
+
+    #[test]
+    #[should_panic]
+    fn bad_value() {
+        let mut selection_properties = SelectionProperties::new();
+        selection_properties.set(
+            "keep_alive",
+            SelectionPropertyValue::Direction(Direction::UnidirectionalReceive),
+        );
     }
 }

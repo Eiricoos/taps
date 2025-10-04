@@ -85,11 +85,11 @@ impl SecurityParameters {
         //
     }
 
-    pub fn new_disabled_security_parameters() {
+    pub fn new_disabled() {
         //
     }
 
-    pub fn new_opportunistic_security_parameters() {
+    pub fn new_opportunistic() {
         //
     }
 
@@ -97,11 +97,13 @@ impl SecurityParameters {
         // Set members
     }
 
+    // Placeholder
     pub fn set_trust_verification_callback(trust: CallBack) {
-        // Bah
+        trust.something;
     }
 
+    // Also, you guessed it, a placeholder
     pub fn set_identity_challenge_callback(challenge: CallBack) {
-        // Bingbong
+        challenge.something;
     }
 }
